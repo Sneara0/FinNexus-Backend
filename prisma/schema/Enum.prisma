@@ -1,0 +1,49 @@
+enum UserRole {
+  USER      // সাধারণ ব্যবহারকারী
+  MANAGER   // ম্যানেজার (প্রিমিয়াম ইউজার)
+  ADMIN     // প্রশাসক
+}
+enum TransactionType {
+  INCOME    // আয়
+  EXPENSE   // খরচ
+  TRANSFER  // ট্রান্সফার
+}
+enum TransactionCategory {
+  FOOD              // খাবার ও রেস্টুরেন্ট
+  TRANSPORTATION    // গাড়ি, বাস, ট্রেন, পেট্রোল
+  ENTERTAINMENT     // সিনেমা, গেম, কনসার্ট
+  SHOPPING          // কেনাকাটা, কাপড়, জিনিসপত্র
+  UTILITIES         // বিদ্যুৎ, পানি, গ্যাস, ইন্টারনেট
+  HEALTHCARE        // ডাক্তার, হাসপাতাল, ঔষধ
+  EDUCATION         // টিউশন, বই, কোর্স
+  RENT              // বাসা ভাড়া
+  SALARY            // বেতন
+  INVESTMENT        // শেয়ার, ডিপোজিট
+  INSURANCE         // বীমা
+  GIFTS             // উপহার, দান
+  TRAVEL            // ভ্রমণ
+  OTHER             // অন্যান্য
+}
+
+enum BudgetPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  BUDGET_ALERT
+  GOAL_ACHIEVED
+  SUBSCRIPTION_RENEWAL
+  AI_INSIGHT
+  WEEKLY_REPORT
+  PAYMENT_REMINDER
+}

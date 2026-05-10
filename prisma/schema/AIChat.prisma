@@ -1,0 +1,14 @@
+model AIChat {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId  String
+  message    String
+  response   String
+  context    Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([createdAt])
+}

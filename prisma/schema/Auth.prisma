@@ -1,0 +1,33 @@
+model User {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  password      String
+  name          String
+  role          UserRole        @default(USER)
+  avatar        String?
+  phone         String?
+  address       String?
+  isActive      Boolean         @default(true)
+  isVerified    Boolean         @default(false)
+  lastLogin     DateTime?
+  emailVerified DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // সম্পর্ক (Relations)
+  transactions  Transaction[]
+  budgets       Budget[]
+  goals         Goal[]
+  subscriptions Subscription[]
+  payments      Payment[]
+  aiChats       AIChat[]
+  notifications Notification[]
+  userSettings  UserSettings?
+  aiInsights    AIInsight[]
+  categoryRules CategoryRule[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+}

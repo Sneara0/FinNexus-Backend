@@ -1,0 +1,16 @@
+model CategoryRule {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyword     String
+  category    TransactionCategory
+  type        TransactionType?
+  priority    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, keyword])
+  @@index([userId])
+  @@index([keyword])
+}

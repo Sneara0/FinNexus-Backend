@@ -1,0 +1,20 @@
+model Subscription {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  amount       Float
+  currency     String    @default("BDT")
+  billingCycle String
+  startDate    DateTime
+  nextBilling  DateTime
+  category     String    @default("ENTERTAINMENT")
+  isActive     Boolean   @default(true)
+  cancelAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([nextBilling])
+  @@index([isActive])
+}
