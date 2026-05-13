@@ -1,154 +1,148 @@
+
 import { Request, Response } from 'express';
-import { prisma } from '../../../config/prisma.js';
-import { sendResponse } from '../../utils/sendResponse.js';
-import { AIService } from './ai.service.js';
 import { catchAsync } from '../../utils/catchAsync.js';
- // নিশ্চিত করুন এটি default import কি না
+import { sendError, sendSuccess } from '../../utils/sendResponse.js';
+import AIService from './ai.service.js';
 
-// চ্যাট রেসপন্স
-const chat = catchAsync(async (req: Request, res: Response) => {
+
+// ========================================
+// 1. AI চ্যাট
+// ========================================
+export const chat = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
-  const { sessionId, message } = req.body;
-
+  const { message, sessionId } = req.body;
+  
   if (!message) {
-    return sendResponse(res, {
-      statusCode: 400,
-      success: false,
-      message: 'মেসেজ প্রয়োজন',
-    });
+    return sendError(res, 'Message is required', 400);
   }
-
-  // sessionId কে স্ট্রিং হিসেবে নিশ্চিত করা
-  const chatSessionId = (sessionId as string) || `session_${Date.now()}_${userId}`;
-  const result = await AIService.generateChatResponse(userId, chatSessionId, message);
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'AI রেসপন্স তৈরি হয়েছে',
-    data: {
-      sessionId: chatSessionId,
-      response: result.response,
-      chat: result.chat
-    },
-  });
+  
+  const result = await AIService.chat(userId, message, sessionId);
+  sendSuccess(res, result, 'AI response generated');
 });
 
-// চ্যাট হিস্টোরি
-const getChatHistory = catchAsync(async (req: Request, res: Response) => {
+// ========================================
+// 2. চ্যাট হিস্টোরি
+// ========================================
+export const getChatHistory = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
-  // ✅ টাইপ কাস্টিং ফিক্স
-  const sessionId = req.params.sessionId as string;
+  const { sessionId } = req.params;
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 20;
-
-  const history = await AIService.getChatHistory(userId, sessionId, page, limit);
   
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'চ্যাট হিস্টোরি পাওয়া গেছে',
-    data: history,
-  });
+  const result = await AIService.getChatHistory(userId, sessionId as string, page, limit);
+  sendSuccess(res, result, 'Chat history retrieved');
 });
 
-// চ্যাট সেশনস
-const getChatSessions = catchAsync(async (req: Request, res: Response) => {
+// ========================================
+// 3. চ্যাট সেশনস
+// ========================================
+export const getChatSessions = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
+  
   const sessions = await AIService.getChatSessions(userId);
-  
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'চ্যাট সেশন পাওয়া গেছে',
-    data: sessions,
-  });
+  sendSuccess(res, { sessions }, 'Chat sessions retrieved');
 });
 
-// চ্যাট ডিলিট
-const deleteChat = catchAsync(async (req: Request, res: Response) => {
+// ========================================
+// 4. চ্যাট ডিলিট
+// ========================================
+export const deleteChat = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
-  // ✅ টাইপ কাস্টিং ফিক্স
-  const chatId = req.params.chatId as string;
-
-  await AIService.deleteChat(userId, chatId);
+  const { chatId } = req.params;
   
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'চ্যাট ডিলিট করা হয়েছে',
-    data: null,
-  });
+  await AIService.deleteChat(userId, chatId as string);
+  sendSuccess(res, null, 'Chat deleted successfully');
 });
 
-// সেশন ডিলিট
-const deleteSession = catchAsync(async (req: Request, res: Response) => {
+// ========================================
+// 5. সেশন ডিলিট
+// ========================================
+export const deleteSession = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
-  // ✅ টাইপ কাস্টিং ফিক্স
-  const sessionId = req.params.sessionId as string;
-
-  await AIService.deleteSession(userId, sessionId);
+  const { sessionId } = req.params;
   
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'সেশন ডিলিট করা হয়েছে',
-    data: null,
-  });
+  await AIService.deleteSession(userId, sessionId as string);
+  sendSuccess(res, null, 'Session deleted successfully');
 });
 
-// ফাইন্যান্সিয়াল বিশ্লেষণ
-const analyzeFinances = catchAsync(async (req: Request, res: Response) => {
+// ========================================
+// 6. ফাইন্যান্সিয়াল বিশ্লেষণ
+// ========================================
+export const analyzeFinances = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
-
-  const transactions = await prisma.transaction.findMany({
-    where: { userId },
-    orderBy: { date: 'desc' },
-    take: 50
-  });
-
-  const analysis = await AIService.analyzeFinancialData(userId, transactions);
+  const period = req.query.period as string || 'month';
   
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'বিশ্লেষণ সম্পন্ন হয়েছে',
-    data: analysis,
-  });
+  const analysis = await AIService.analyzeFinances(userId, period);
+  sendSuccess(res, analysis, 'Financial analysis completed');
 });
 
-// বাজেট সুপারিশ
-const getBudgetRecommendation = catchAsync(async (req: Request, res: Response) => {
+// ========================================
+// 7. বাজেট সুপারিশ
+// ========================================
+export const getBudgetRecommendation = catchAsync(async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
   const { monthlyIncome } = req.body;
-
-  const lastMonth = new Date();
-  lastMonth.setMonth(lastMonth.getMonth() - 1);
-
-  const expenses = await prisma.transaction.groupBy({
-    by: ['category'],
-    where: {
-      userId,
-      type: 'EXPENSE',
-      date: { gte: lastMonth }
-    },
-    _sum: { amount: true }
-  });
-
-  const recommendation = await AIService.getBudgetRecommendation(
-    userId,
-    Number(monthlyIncome), // নিশ্চিত করুন এটি নাম্বার
-    expenses.map(e => ({ category: e.category, amount: e._sum.amount || 0 }))
-  );
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'বাজেট সুপারিশ তৈরি হয়েছে',
-    data: recommendation,
-  });
+  
+  if (!monthlyIncome) {
+    return sendError(res, 'Monthly income is required', 400);
+  }
+  
+  const recommendation = await AIService.getBudgetRecommendation(userId, monthlyIncome);
+  sendSuccess(res, recommendation, 'Budget recommendation generated');
 });
 
+// ========================================
+// 8. কন্টেন্ট জেনারেটর
+// ========================================
+export const generateContent = catchAsync(async (req: Request, res: Response) => {
+  const { type, topic, tone, length } = req.body;
+  
+  if (!type || !topic) {
+    return sendError(res, 'Type and topic are required', 400);
+  }
+  
+  const content = await AIService.generateContent(type, topic, tone, length);
+  sendSuccess(res, content, 'Content generated successfully');
+});
+
+// ========================================
+// 9. অটো ট্যাগিং
+// ========================================
+export const autoTagTransaction = catchAsync(async (req: Request, res: Response) => {
+  const { description, amount } = req.body;
+  
+  if (!description) {
+    return sendError(res, 'Description is required', 400);
+  }
+  
+  const result = await AIService.autoTagTransaction(description, amount);
+  sendSuccess(res, result, 'Transaction categorized');
+});
+
+// ========================================
+// 10. ভয়েস কমান্ড
+// ========================================
+export const processVoiceCommand = catchAsync(async (req: Request, res: Response) => {
+  const { text } = req.body;
+  
+  if (!text) {
+    return sendError(res, 'Voice text is required', 400);
+  }
+  
+  const result = await AIService.processVoiceCommand(text);
+  sendSuccess(res, result, 'Voice command processed');
+});
+
+// ========================================
+// 11. স্মার্ট রিকমেন্ডেশন
+// ========================================
+export const getRecommendations = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  const limit = Number(req.body.limit) || 4;
+  
+  const recommendations = await AIService.getRecommendations(userId, limit);
+  sendSuccess(res, { recommendations }, 'Recommendations generated');
+});
 export const AIController = {
   chat,
   getChatHistory,
@@ -156,5 +150,9 @@ export const AIController = {
   deleteChat,
   deleteSession,
   analyzeFinances,
-  getBudgetRecommendation
+  getBudgetRecommendation,
+  generateContent,
+  autoTagTransaction,
+  processVoiceCommand,
+  getRecommendations
 };

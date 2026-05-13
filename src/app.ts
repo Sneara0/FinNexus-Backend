@@ -7,18 +7,19 @@ import {
   rateLimitMiddleware 
 } from './middlewares/index.js'; 
 import { IndexRoutes } from './routes/index.js';
-
-
-// ✅ অথ রাউট ইম্পোর্ট (পাথটি আপনার ফোল্ডার অনুযায়ী চেক করুন)
-
+//import { IndexRoutes } from './routes/index.js';
 
 const app: Application = express();
 
 // --- গ্লোবাল মিডলওয়্যারসমূহ ---
 app.use(cors());
 app.use(express.json());
+
+// ১. রিকোয়েস্ট লগ করার জন্য
 app.use(loggerMiddleware);
-app.use(rateLimitMiddleware());
+
+// ২. রেট লিমিট (ব্র্যাকেট ছাড়া ব্যবহার করুন, কারণ এটি সরাসরি মিডলওয়্যার)
+app.use(rateLimitMiddleware); 
 
 // --- রাউটসমূহ ---
 
@@ -31,11 +32,14 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // ✅ API রাউটস সেটআপ
-app.use('/api/v1',IndexRoutes);
-
+app.use('/api/v1', IndexRoutes);
 
 // --- এরর হ্যান্ডলিং (সবার শেষে থাকবে) ---
+
+// ৩. যদি কোনো রাউট না পাওয়া যায়
 app.use(notFoundHandler);
+
+// ৪. গ্লোবাল এরর হ্যান্ডলার
 app.use(errorHandler);
 
 export default app;

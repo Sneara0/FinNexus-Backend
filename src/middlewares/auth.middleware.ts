@@ -1,4 +1,3 @@
-
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
@@ -6,10 +5,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // ========================================
-// টাইপ ডিফিনেশন
+// টাইপ ডিফিনেশন (Export as Interface)
 // ========================================
-
-
 export interface AuthRequest extends Request {
   user?: {
     id: string;
@@ -20,22 +17,18 @@ export interface AuthRequest extends Request {
 
 // ========================================
 // 1. অথেন্টিকেশন মিডলওয়্যার
-// টোকেন ভেরিফাই করে এবং ইউজার তথ্য রিকোয়েস্টে যোগ করে
 // ========================================
-
 export const authenticate = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // 1. হেডার থেকে টোকেন নেওয়া
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ') 
       ? authHeader.replace('Bearer ', '') 
       : null;
     
-    // 2. টোকেন নেই
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -44,14 +37,12 @@ export const authenticate = async (
       });
     }
     
-    // 3. টোকেন ভেরিফাই করা
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'finnexus_secret') as {
       id: string;
       email: string;
       role: string;
     };
     
-    // 4. ইউজার তথ্য রিকোয়েস্টে সেট করা
     req.user = {
       id: decoded.id,
       email: decoded.email,
@@ -59,9 +50,7 @@ export const authenticate = async (
     };
     
     next();
-    
   } catch (error) {
-    // টোকেন এক্সপায়ার হয়েছে
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({
         success: false,
@@ -69,8 +58,6 @@ export const authenticate = async (
         error: 'TOKEN_EXPIRED'
       });
     }
-    
-    // টোকেন ইনভ্যালিড
     return res.status(401).json({
       success: false,
       message: 'টোকেন বৈধ নয়। আবার লগইন করুন।',
@@ -81,12 +68,9 @@ export const authenticate = async (
 
 // ========================================
 // 2. অথোরাইজেশন মিডলওয়্যার
-// নির্দিষ্ট রোল চেক করে
 // ========================================
-
 export const authorize = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    // ইউজার তথ্য নেই
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -95,7 +79,6 @@ export const authorize = (...roles: string[]) => {
       });
     }
     
-    // রোল ম্যাচ করে না
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -105,16 +88,13 @@ export const authorize = (...roles: string[]) => {
         yourRole: req.user.role
       });
     }
-    
     next();
   };
 };
 
 // ========================================
 // 3. অপশনাল অথেন্টিকেশন
-// টোকেন থাকলে ইউজার সেট করে, না থাকলে এগিয়ে যায়
 // ========================================
-
 export const optionalAuth = async (
   req: AuthRequest,
   res: Response,
@@ -139,10 +119,8 @@ export const optionalAuth = async (
         role: decoded.role
       };
     }
-    
     next();
   } catch (error) {
-    // টোকেন ভুল হলেও এগিয়ে যাবে
     next();
   }
 };
@@ -150,15 +128,13 @@ export const optionalAuth = async (
 // ========================================
 // 4. রেট লিমিট মিডলওয়্যার
 // ========================================
+const requests = new Map<string, { count: number; resetTime: number }>();
 
-export const rateLimitMiddleware = () => {
-  const requests = new Map<string, { count: number; resetTime: number }>();
-  
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+export const rateLimitMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
-    const windowMs = 15 * 60 * 1000; // 15 মিনিট
-    const maxRequests = 100; // সর্বোচ্চ 100 রিকোয়েস্ট
+    const windowMs = 15 * 60 * 1000; 
+    const maxRequests = 100; 
     
     const userRequests = requests.get(ip);
     
@@ -181,13 +157,11 @@ export const rateLimitMiddleware = () => {
     
     userRequests.count++;
     next();
-  };
 };
 
 // ========================================
 // 5. লগিং মিডলওয়্যার
 // ========================================
-
 export const loggerMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   const start = Date.now();
   

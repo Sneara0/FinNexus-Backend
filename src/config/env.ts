@@ -16,6 +16,7 @@ export interface EnvConfig {
   DEMO_USER_PASSWORD?: string; // ডেমো ইউজারের পাসওয়ার্ড (ঐচ্ছিক)
     DEMO_MANAGER_EMAIL?: string; // ডেমো ম্যানেজারের ইমেইল (ঐচ্ছিক)
   DEMO_MANAGER_PASSWORD?: string; // ডেমো ম্যানেজারের পাসওয়ার্ড (ঐচ্ছিক)
+  
 }
 
 const _config: EnvConfig = {

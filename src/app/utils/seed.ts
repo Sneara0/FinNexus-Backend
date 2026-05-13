@@ -3,16 +3,16 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
-// ১. এনামগুলো ইম্পোর্ট
+// 1. Import Prisma Client
+import { prisma } from '../lib/prisma.js';
+
+// 2. Import Enums from Generated Client
 import { 
   UserRole, 
   TransactionType, 
   TransactionCategory, 
   BudgetPeriod 
 } from '../../generated/prisma/index.js';
-
-// ২. প্রিজমা ক্লায়েন্ট ইম্পোর্ট
-import { prisma } from '../../config/prisma.js';
 
 dotenv.config();
 
@@ -42,11 +42,11 @@ async function main() {
 
   const createdUsers: any[] = [];
 
-  // --- ইউজার এবং ইউজার সেটিংস তৈরি ---
+  // --- Create Users and User Settings ---
   for (const [key, cred] of Object.entries(DEMO_CREDENTIALS)) {
     const hashedPassword = await bcrypt.hash(cred.password, 10);
     
-    // ইউজার তৈরি বা আপডেট (Upsert)
+    // Upsert User (Create or Update if exists)
     const user = await prisma.user.upsert({
       where: { email: cred.email },
       update: {
@@ -63,11 +63,11 @@ async function main() {
         isActive: true,
         isVerified: true,
         emailVerified: new Date(),
-        // ✅ 'settings' বদলে 'userSettings' ব্যবহার করা হয়েছে (আপনার স্কিমা অনুযায়ী)
+        // Using 'userSettings' as per your schema
         userSettings: {
           create: {
             currency: 'BDT',
-            language: 'bn',
+            language: 'en', // Changed default language to English
             theme: 'dark',
             emailNotifications: true,
             pushNotifications: true,
@@ -78,14 +78,14 @@ async function main() {
       }
     });
     
-    console.log(`✅ ${cred.role} ইউজার রেডি: ${cred.email}`);
+    console.log(`✅ ${cred.role} User ready: ${cred.email}`);
     createdUsers.push(user);
   }
 
   const adminUser = createdUsers.find(u => u.role === 'ADMIN');
   
   if (adminUser) {
-    // --- ডেমো ট্রানজেকশন তৈরি ---
+    // --- Create Demo Transactions ---
     const existingTxCount = await prisma.transaction.count({ where: { userId: adminUser.id } });
     if (existingTxCount === 0) {
       await prisma.transaction.createMany({
@@ -110,10 +110,10 @@ async function main() {
           }
         ]
       });
-      console.log(`✅ অ্যাডমিনের জন্য ডেমো ট্রানজেকশন তৈরি হয়েছে`);
+      console.log(`✅ Demo transactions created for Admin`);
     }
 
-    // --- ডেমো বাজেট তৈরি ---
+    // --- Create Demo Budget ---
     const existingBudgetCount = await prisma.budget.count({ where: { userId: adminUser.id } });
     if (existingBudgetCount === 0) {
       const now = new Date();
@@ -130,14 +130,14 @@ async function main() {
           endDate: endOfMonth,
           alertThreshold: 80,
           spent: 5000,
-          month: startOfMonth 
+          // 'month' field removed as it was missing from your schema
         }
       });
-      console.log(`✅ অ্যাডমিনের জন্য বাজেট তৈরি হয়েছে`);
+      console.log(`✅ Budget created for Admin`);
     }
   }
 
-  // ডেমো ক্রেডেনশিয়াল ফাইল সেভ করা
+  // Save Demo Credentials to a JSON file for reference
   const demoCredPath = path.join(process.cwd(), 'demo-credentials.json');
   fs.writeFileSync(demoCredPath, JSON.stringify(DEMO_CREDENTIALS, null, 2));
   

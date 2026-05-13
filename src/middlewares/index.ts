@@ -2,10 +2,11 @@ export {
   authenticate,
   authorize,
   optionalAuth,
-  rateLimitMiddleware, // এটি ফাংশন হিসেবে এক্সপোর্ট হচ্ছে
-  loggerMiddleware,
-  AuthRequest
-} from './auth.middleware.js';
+  rateLimitMiddleware,
+  loggerMiddleware
+} from './auth.middleware.js'; // .ts এক্সটেনশন যোগ করে দেখুন
+
+export type { AuthRequest } from './auth.middleware.js';
 
 export {
   errorHandler,

@@ -1,92 +1,134 @@
 import { z } from 'zod';
 
 // ========================================
-// AI চ্যাট ভ্যালিডেশন
+// 1. চ্যাট ভ্যালিডেশন
 // ========================================
-const chatSchema = z.object({
+export const chatSchema = z.object({
   body: z.object({
-    sessionId: z.string().min(1, 'সেশন আইডি প্রয়োজন').optional(),
     message: z
       .string()
-      .min(1, 'মেসেজ প্রয়োজন')
-      .max(500, 'মেসেজ সর্বোচ্চ ৫০০ অক্ষরের হতে পারে'),
-  }),
+      .min(1, 'Message is required')
+      .max(2000, 'Message is too long'),
+    sessionId: z
+      .string()
+      .optional()
+  })
 });
 
 // ========================================
-// চ্যাট হিস্টোরি ভ্যালিডেশন
+// 2. চ্যাট হিস্টোরি ভ্যালিডেশন (FIXED)
 // ========================================
-const chatHistorySchema = z.object({
+export const chatHistorySchema = z.object({
   params: z.object({
-    sessionId: z.string().min(1, 'সেশন আইডি প্রয়োজন'),
+    sessionId: z.string().min(1, 'Session ID is required')
   }),
   query: z.object({
+    // .transform(Number) এর পর .default() এ অবশ্যই number দিতে হবে
     page: z
       .string()
-      .regex(/^\d+$/, 'পৃষ্ঠা নম্বর সঠিক নয়')
+      .regex(/^\d+$/, 'Page must be a number')
       .transform(Number)
-      .pipe(z.number().min(1))
       .optional()
-      .default(1), // ✅ ফিক্সড: নাম্বার হিসেবে ডিফল্ট ভ্যালু
-    
+      .default(1), // ভুল ছিল '1', সঠিক হলো 1
     limit: z
       .string()
-      .regex(/^\d+$/, 'লিমিট সঠিক নয়')
+      .regex(/^\d+$/, 'Limit must be a number')
       .transform(Number)
-      .pipe(z.number().min(1).max(100))
       .optional()
-      .default(20), // ✅ ফিক্সড: নাম্বার হিসেবে ডিফল্ট ভ্যালু
-  }),
+      .default(20) // ভুল ছিল '20', সঠিক হলো 20
+  })
 });
 
 // ========================================
-// বাজেট সুপারিশ ভ্যালিডেশন
+// 3. বাজেট সুপারিশ ভ্যালিডেশন
 // ========================================
-const budgetRecommendationSchema = z.object({
+export const budgetRecommendationSchema = z.object({
   body: z.object({
     monthlyIncome: z
-      .number({
-        // ✅ ফিক্স: invalid_type_error এর বদলে message ব্যবহার করা হয়েছে
-        message: 'মাসিক আয় একটি সংখ্যা হতে হবে', 
-      })
-      .positive('মাসিক আয় ০ এর বেশি হতে হবে'),
-  }),
+      .number()
+      .positive('Monthly income must be positive')
+      .min(1000, 'Monthly income must be at least 1000')
+      .max(10000000, 'Monthly income is too high')
+  })
 });
 
 // ========================================
-// ফাইন্যান্সিয়াল বিশ্লেষণ ভ্যালিডেশন
+// 4. কন্টেন্ট জেনারেশন ভ্যালিডেশন (FIXED ENUM)
 // ========================================
-const periods = ['week', 'month', 'year', 'all'] as const;
-
-const analyzeSchema = z.object({
-  query: z.object({
-    period: z
-      .enum(periods, {
-        // ✅ ফিক্স: errorMap বা invalid_type_error এর বদলে message ব্যবহার করুন
-        message: 'পিরিয়ড অবশ্যই week, month, year বা all হতে হবে',
-      })
-      .default('month'),
-    
-    limit: z
+export const contentGenerationSchema = z.object({
+  body: z.object({
+    // enum এ errorMap সরাসরি কাজ করে না, invalid_type_error ব্যবহার করুন
+    type: z.enum(['description', 'summary', 'blog', 'caption', 'email'], {
+  // invalid_type_error এর বদলে সরাসরি 'error' বা 'message' ব্যবহার করুন
+  // অথবা শুধু একটি স্ট্রিং পাস করুন
+  error: 'Type must be description, summary, blog, caption, or email'
+}),
+    topic: z
       .string()
-      .regex(/^\d+$/, 'লিমিট সঠিক নয়')
-      .transform(Number)
-      .pipe(z.number().min(1).max(500))
+      .min(1, 'Topic is required')
+      .max(200, 'Topic is too long'),
+    tone: z
+      .enum(['professional', 'casual', 'friendly', 'formal'])
       .optional()
-      .default(50),
-  }).optional(),
+      .default('professional'),
+    length: z
+      .enum(['short', 'medium', 'long'])
+      .optional()
+      .default('medium')
+  })
 });
 
-// এক্সপোর্ট অবজেক্ট
+// ========================================
+// 5. অটো ট্যাগ ভ্যালিডেশন
+// ========================================
+export const autoTagSchema = z.object({
+  body: z.object({
+    description: z
+      .string()
+      .min(1, 'Description is required')
+      .max(500, 'Description is too long'),
+    amount: z
+      .number()
+      .positive('Amount must be positive')
+      .optional()
+  })
+});
+
+// ========================================
+// 6. ভয়েস কমান্ড ভ্যালিডেশন
+// ========================================
+export const voiceCommandSchema = z.object({
+  body: z.object({
+    text: z
+      .string()
+      .min(1, 'Voice text is required')
+      .max(500, 'Voice text is too long')
+  })
+});
+
+// ========================================
+// 7. রিকমেন্ডেশন ভ্যালিডেশন
+// ========================================
+export const recommendationsSchema = z.object({
+  body: z.object({
+    limit: z
+      .number()
+      .min(1, 'Limit must be at least 1')
+      .max(20, 'Limit cannot exceed 20')
+      .optional()
+      .default(4)
+  })
+});
+
+// ========================================
+// এক্সপোর্ট সব স্কিমা
+// ========================================
 export const AIValidation = {
   chatSchema,
   chatHistorySchema,
   budgetRecommendationSchema,
-  analyzeSchema,
+  contentGenerationSchema,
+  autoTagSchema,
+  voiceCommandSchema,
+  recommendationsSchema
 };
-
-// টাইপ এক্সপোর্ট
-export type ChatInput = z.infer<typeof chatSchema>;
-export type ChatHistoryInput = z.infer<typeof chatHistorySchema>;
-export type BudgetRecommendationInput = z.infer<typeof budgetRecommendationSchema>;
-export type AnalyzeInput = z.infer<typeof analyzeSchema>;
