@@ -16,6 +16,8 @@ export interface EnvConfig {
   DEMO_USER_PASSWORD?: string; // ডেমো ইউজারের পাসওয়ার্ড (ঐচ্ছিক)
     DEMO_MANAGER_EMAIL?: string; // ডেমো ম্যানেজারের ইমেইল (ঐচ্ছিক)
   DEMO_MANAGER_PASSWORD?: string; // ডেমো ম্যানেজারের পাসওয়ার্ড (ঐচ্ছিক)
+  JWT_SECRET?: string; // JWT সিক্রেট (ঐচ্ছিক, তবে প্রোডাকশনে থাকা উচিত)
+  JWT_EXPIRES_IN?: string; // JWT এক্সপায়ারেশন সময় (ঐচ্ছিক, ডিফল্ট হতে পারে '1h' বা '7d')
   
 }
 
@@ -30,6 +32,9 @@ const _config: EnvConfig = {
   DEMO_MANAGER_PASSWORD: process.env.DEMO_MANAGER_PASSWORD,
   DEMO_USER_EMAIL: process.env.DEMO_USER_EMAIL,
   DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD,
+  JWT_SECRET: process.env.JWT_SECRET,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1h'
+
 
 };
 
