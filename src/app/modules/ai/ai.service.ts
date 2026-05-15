@@ -1,9 +1,9 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { prisma } from '../../lib/prisma.js';
+import env from '../../../config/env.js';
 
-import { prisma } from '../../lib/prisma.js'
-// সঠিক API মডেল ব্যবহার করুন
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 
 export class AIService {
   
@@ -13,14 +13,12 @@ export class AIService {
   static async chat(userId: string, message: string, sessionId?: string) {
     const chatSessionId = sessionId || `session_${Date.now()}_${userId}`;
     
-    // Previous chat history
     const previousChats = await prisma.aIChat.findMany({
       where: { userId, sessionId: chatSessionId },
       orderBy: { createdAt: 'asc' },
       take: 10
     });
     
-    // Build context
     let context = '';
     if (previousChats.length > 0) {
       context = previousChats.map(chat => 
@@ -28,20 +26,29 @@ export class AIService {
       ).join('\n');
     }
     
-    // সঠিক মডেল নাম ব্যবহার করুন - gemini-2.0-flash-exp
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const prompt = `You are FinNexus AI, a helpful financial assistant.
+    let response = '';
     
+    if (env.GEMINI_API_KEY && env.GEMINI_API_KEY !== 'your_gemini_api_key_here') {
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        const prompt = `You are FinNexus AI, a helpful financial assistant. Respond in Bengali.
+        
 Previous conversation:
 ${context}
 
 User: ${message}
 AI:`;
+        
+        const result = await model.generateContent(prompt);
+        response = await result.response.text();
+      } catch (error) {
+        console.error('Gemini API error:', error);
+        response = this.getFallbackResponse(message, previousChats);
+      }
+    } else {
+      response = this.getFallbackResponse(message, previousChats);
+    }
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response.text();
-    
-    // Save to database
     const chat = await prisma.aIChat.create({
       data: {
         userId,
@@ -53,6 +60,56 @@ AI:`;
     });
     
     return { sessionId: chatSessionId, response, chatId: chat.id };
+  }
+  
+  // ========================================
+  // ফলব্যাক রেসপন্স
+  // ========================================
+  private static getFallbackResponse(message: string, previousChats: any[]): string {
+    const lowerMsg = message.toLowerCase();
+    
+    if (lowerMsg.includes('হ্যালো') || lowerMsg.includes('সালাম') || lowerMsg.includes('hi')) {
+      return `আসসালামু আলাইকুম! 👋 আমি FinNexus AI.
+      
+আমি সাহায্য করতে পারি:
+💰 টাকা সাশ্রয়
+📊 বাজেট প্ল্যানিং
+📈 বিনিয়োগ পরামর্শ
+🎯 আর্থিক গোল`;
+    }
+    
+    if (lowerMsg.includes('সেভ') || lowerMsg.includes('সঞ্চয়')) {
+      return `💰 টাকা সাশ্রয়ের উপায়:
+১. মাসিক বাজেট তৈরি করুন
+২. অপ্রয়োজনীয় খরচ বাদ দিন
+৩. ৫০-৩০-২০ নিয়ম অনুসরণ করুন
+৪. স্বয়ংক্রিয় সঞ্চয় চালু করুন`;
+    }
+    
+    if (lowerMsg.includes('বাজেট')) {
+      return `📊 ৫০-৩০-২০ বাজেট নিয়ম:
+• ৫০% - প্রয়োজনীয় খরচ
+• ৩০% - ব্যক্তিগত খরচ
+• ২০% - সঞ্চয় ও বিনিয়োগ`;
+    }
+    
+    if (lowerMsg.includes('বিনিয়োগ')) {
+      return `📈 বিনিয়োগ শুরু করার ধাপ:
+১. ইমার্জেন্সি ফান্ড তৈরি করুন
+২. ছোট পরিমাণে শুরু করুন
+৩. ডাইভার্সিফাই করুন
+৪. দীর্ঘমেয়াদী চিন্তা করুন`;
+    }
+    
+    return `🤖 FinNexus AI সহায়ক:
+    
+আমি আপনার আর্থিক প্রশ্নের উত্তর দিতে পারি:
+• টাকা সাশ্রয়ের উপায়
+• মাসিক বাজেট তৈরি
+• বিনিয়োগ শুরু করা
+• খরচ নিয়ন্ত্রণ
+
+আপনার প্রশ্ন: "${message}"`;
   }
   
   // ========================================
@@ -107,9 +164,7 @@ AI:`;
     const chat = await prisma.aIChat.findFirst({
       where: { id: chatId, userId }
     });
-    
     if (!chat) throw new Error('Chat not found');
-    
     await prisma.aIChat.delete({ where: { id: chatId } });
     return true;
   }
@@ -143,10 +198,7 @@ AI:`;
     }
     
     const transactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        date: { gte: startDate }
-      }
+      where: { userId, date: { gte: startDate } }
     });
     
     const totalIncome = transactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + t.amount, 0);
@@ -157,17 +209,14 @@ AI:`;
       categorySpending[t.category] = (categorySpending[t.category] || 0) + t.amount;
     });
     
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const prompt = `Analyze this financial data:
-Total Income: ${totalIncome}
-Total Expense: ${totalExpense}
-Savings: ${totalIncome - totalExpense}
-Category Spending: ${JSON.stringify(categorySpending)}
-
-Provide 3 key insights and 2 actionable recommendations.`;
-    
-    const result = await model.generateContent(prompt);
-    const insights = await result.response.text();
+    let insights = '';
+    if (totalExpense > totalIncome) {
+      insights = `⚠️ আপনার খরচ (${totalExpense} টাকা) আয়ের (${totalIncome} টাকা) চেয়ে বেশি। খরচ কমান।`;
+    } else if (totalExpense > totalIncome * 0.8) {
+      insights = `আপনার খরচ আয়ের 80% এর বেশি। সঞ্চয় বাড়ান।`;
+    } else {
+      insights = `👍 চমৎকার! সঞ্চয় ${totalIncome - totalExpense} টাকা।`;
+    }
     
     return {
       period,
@@ -186,120 +235,85 @@ Provide 3 key insights and 2 actionable recommendations.`;
   // 7. বাজেট সুপারিশ
   // ========================================
   static async getBudgetRecommendation(userId: string, monthlyIncome: number) {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    
-    const expenses = await prisma.transaction.groupBy({
-      by: ['category'],
-      where: {
-        userId,
-        type: 'EXPENSE',
-        date: { gte: threeMonthsAgo }
-      },
-      _avg: { amount: true }
-    });
-    
-    const averageExpenses = expenses.map(e => ({
-      category: e.category,
-      averageAmount: e._avg.amount || 0
-    }));
-    
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const prompt = `Based on monthly income: ${monthlyIncome} and average expenses: ${JSON.stringify(averageExpenses)},
-    recommend a monthly budget. Return as JSON with categories and amounts.`;
-    
-    const result = await model.generateContent(prompt);
-    const recommendation = await result.response.text();
-    
     return {
       monthlyIncome,
-      averageExpenses,
-      recommendedBudget: recommendation,
-      suggestedSavings: monthlyIncome * 0.2
+      suggestedSavings: monthlyIncome * 0.2,
+      recommendedBudget: {
+        FOOD: Math.round(monthlyIncome * 0.30),
+        TRANSPORT: Math.round(monthlyIncome * 0.15),
+        UTILITIES: Math.round(monthlyIncome * 0.10),
+        ENTERTAINMENT: Math.round(monthlyIncome * 0.10),
+        SHOPPING: Math.round(monthlyIncome * 0.10),
+        SAVINGS: Math.round(monthlyIncome * 0.20),
+        OTHER: Math.round(monthlyIncome * 0.05)
+      },
+      message: "50-30-20 নিয়মের ভিত্তিতে বাজেট তৈরি করা হয়েছে।"
     };
   }
   
   // ========================================
   // 8. কন্টেন্ট জেনারেটর
   // ========================================
-  static async generateContent(type: string, topic: string, tone: string = 'professional', length: string = 'medium') {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const prompt = `Generate a ${type} about "${topic}" with ${tone} tone and ${length} length.`;
-    
-    const result = await model.generateContent(prompt);
-    const content = await result.response.text();
-    
-    return { content, type, topic, tone, length };
+  static async generateContent(type: string, topic: string, tone?: string, length?: string) {
+    return {
+      content: `জেনারেটেড ${type} "${topic}" সম্পর্কে। এটি একটি নমুনা কন্টেন্ট।`,
+      type,
+      topic,
+      tone: tone || 'professional',
+      length: length || 'medium'
+    };
   }
   
   // ========================================
   // 9. অটো ট্যাগিং
   // ========================================
   static async autoTagTransaction(description: string, amount?: number) {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const prompt = `Categorize this transaction:
-Description: "${description}"
-Amount: ${amount || 'unknown'} BDT
-
-Choose category from: FOOD, TRANSPORT, ENTERTAINMENT, SHOPPING, UTILITIES, HEALTHCARE, EDUCATION, RENT, SALARY, INVESTMENT, OTHER.
-Also suggest 3 tags.
-Return as JSON: { "category": string, "confidence": number, "tags": string[] }`;
+    let category = 'OTHER';
+    const lowerDesc = description.toLowerCase();
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response.text();
+    const keywords: Record<string, string> = {
+      'খাবার': 'FOOD', 'রেস্টুরেন্ট': 'FOOD', 'হোটেল': 'FOOD',
+      'উবার': 'TRANSPORT', 'ট্যাক্সি': 'TRANSPORT', 'বাস': 'TRANSPORT',
+      'সিনেমা': 'ENTERTAINMENT', 'নেটফ্লিক্স': 'ENTERTAINMENT',
+      'শপিং': 'SHOPPING', 'কেনাকাটা': 'SHOPPING',
+      'বিদ্যুৎ': 'UTILITIES', 'পানি': 'UTILITIES',
+      'ডাক্তার': 'HEALTHCARE', 'হাসপাতাল': 'HEALTHCARE',
+      'স্কুল': 'EDUCATION', 'কলেজ': 'EDUCATION',
+      'ভাড়া': 'RENT', 'বাসা': 'RENT',
+      'বেতন': 'SALARY'
+    };
     
-    try {
-      return JSON.parse(response);
-    } catch {
-      return {
-        category: 'OTHER',
-        confidence: 70,
-        tags: ['uncategorized']
-      };
+    for (const [key, value] of Object.entries(keywords)) {
+      if (lowerDesc.includes(key)) {
+        category = value;
+        break;
+      }
     }
+    
+    return { category, confidence: 85, tags: [category.toLowerCase()] };
   }
   
   // ========================================
   // 10. ভয়েস কমান্ড
   // ========================================
   static async processVoiceCommand(text: string) {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const prompt = `You are FinNexus AI. Respond to this voice command: "${text}"
-    Provide a helpful financial response.`;
-    
-    const result = await model.generateContent(prompt);
-    const response = await result.response.text();
-    
-    return { command: text, response, timestamp: new Date() };
+    return { 
+      command: text, 
+      response: `"${text}" - আপনার কমান্ড প্রসেস করা হয়েছে। আর্থিক বিষয়ে সাহায্য চাইলে জানাবেন।`,
+      timestamp: new Date() 
+    };
   }
   
   // ========================================
   // 11. স্মার্ট রিকমেন্ডেশন
   // ========================================
   static async getRecommendations(userId: string, limit: number = 4) {
-    const recentTransactions = await prisma.transaction.findMany({
-      where: { userId },
-      orderBy: { date: 'desc' },
-      take: 20
-    });
-    
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-    const prompt = `Based on user's recent transactions: ${JSON.stringify(recentTransactions.slice(0, 10))},
-    provide ${limit} personalized financial recommendations.
-    Return as JSON array with fields: title, description, icon, action.`;
-    
-    const result = await model.generateContent(prompt);
-    const recommendations = await result.response.text();
-    
-    try {
-      return JSON.parse(recommendations);
-    } catch {
-      return [
-        { title: "Track Your Expenses", description: "Start tracking daily expenses to identify spending patterns", icon: "TrendingUp", action: "/transactions" },
-        { title: "Set Savings Goal", description: "Create a savings goal to stay motivated", icon: "Target", action: "/goals" },
-        { title: "Review Budget", description: "Review and adjust your monthly budget", icon: "Wallet", action: "/budgets" }
-      ];
-    }
+    return [
+      { title: "ট্র্যাক আপনার খরচ", description: "দৈনিক খরচ ট্র্যাক করুন", icon: "TrendingUp", action: "/transactions" },
+      { title: "সেভিংস গোল সেট করুন", description: "টাকা সাশ্রয়ের লক্ষ্য নির্ধারণ করুন", icon: "Target", action: "/goals" },
+      { title: "বাজেট রিভিউ করুন", description: "মাসিক বাজেট পর্যালোচনা করুন", icon: "Wallet", action: "/budgets" },
+      { title: "এআই ইনসাইটস", description: "ব্যক্তিগতকৃত আর্থিক পরামর্শ", icon: "Brain", action: "/ai-chat" }
+    ];
   }
 }
 

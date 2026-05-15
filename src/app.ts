@@ -12,14 +12,15 @@ const app: Application = express();
 
 // --- গ্লোবাল মিডলওয়্যারসমূহ ---
 
-// ✅ CORS কনফিগারেশন
+// ✅ আপডেট করা CORS কনফিগারেশন
 app.use(cors({
   origin: [
     'http://localhost:3000', // লোকাল ডেভেলপমেন্টের জন্য
+    'https://finnexus-frontend.vercel.app', // আপনার লাইভ ফ্রন্টএন্ড ইউআরএল
     
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  credentials: true, // যদি কুকি বা অথেন্টিকেশন হেডার ব্যবহার করেন
+  credentials: true, 
 }));
 
 app.use(express.json());
@@ -44,7 +45,6 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/v1', IndexRoutes);
 
 // --- এরর হ্যান্ডলিং (সবার শেষে থাকবে) ---
-
 app.use(notFoundHandler);
 app.use(errorHandler);
 

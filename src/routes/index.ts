@@ -8,6 +8,7 @@ import { CategoryRuleRoutes } from "../app/modules/categoryRule/categoryRule.rou
 import { NotificationRoutes } from "../app/modules/notification/notification.routes.js";
 import { TransactionRoutes } from "../app/modules/transaction/transaction.routes.js";
 import { AdminRoutes } from "../app/modules/admin/admin.routes.js";
+import { SubscriptionRoutes } from "../app/modules/subscription/subscription.routes.js";
 
 
  // ✅ ইমপোর্ট করুন
@@ -23,4 +24,5 @@ router.use("/goals", GoalRoutes);
 router.use("/category-rules", CategoryRuleRoutes); 
 router.use("/notifications", NotificationRoutes);
 router.use("/transactions", TransactionRoutes); 
+router.use("/subscriptions", SubscriptionRoutes); // ✅ সাবস্ক্রিপশন রাউট যোগ করা হয়েছে
 export const IndexRoutes = router;

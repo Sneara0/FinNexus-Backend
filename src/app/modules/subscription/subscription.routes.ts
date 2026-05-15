@@ -86,4 +86,6 @@ router.post('/admin/process-renewals', processRenewals);
  
 router.post('/admin/send-reminders', sendReminders);
 
-export default router;
+
+
+export const  SubscriptionRoutes = router;
