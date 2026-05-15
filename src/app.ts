@@ -10,42 +10,55 @@ import { IndexRoutes } from './routes/index.js';
 
 const app: Application = express();
 
-// --- গ্লোবাল মিডলওয়্যারসমূহ ---
+// --- ১. গ্লোবাল মিডলওয়্যারসমূহ ---
 
-// ✅ আপডেট করা CORS কনফিগারেশন
+// ✅ প্রফেশনাল CORS কনফিগারেশন
 app.use(cors({
-  origin: [
-    'http://localhost:3000', // লোকাল ডেভেলপমেন্টের জন্য
-    'https://finnexus-frontend.vercel.app', // আপনার লাইভ ফ্রন্টএন্ড ইউআরএল
-    
-  ],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://finnexus-frontend.vercel.app'
+    ];
+    // origin না থাকলে (যেমন পোস্টম্যান থেকে রিকোয়েস্ট) বা অ্যালাউড লিস্টে থাকলে অ্যাপ্রুভ করবে
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  credentials: true, 
+  credentials: true,
 }));
 
-app.use(express.json());
+// বডি পার্সার (লিমিটসহ যাতে বড় পেলোড সার্ভার ক্র্যাশ না করে)
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// ১. রিকোয়েস্ট লগ করার জন্য
+// রিকোয়েস্ট লগিং এবং রেট লিমিটিং
 app.use(loggerMiddleware);
-
-// ২. রেট লিমিট 
 app.use(rateLimitMiddleware); 
 
-// --- রাউটসমূহ ---
+// --- ২. রাউটসমূহ ---
 
-// হোম রাউট
+// হোম রাউট (সিস্টেম চেক করার জন্য)
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'FinNexus AI Server is running smoothly! 🚀',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// ✅ API রাউটস সেটআপ
+// ✅ মূল API রাউটস
 app.use('/api/v1', IndexRoutes);
 
-// --- এরর হ্যান্ডলিং (সবার শেষে থাকবে) ---
+
+
+
 app.use(notFoundHandler);
 app.use(errorHandler);
+   
+
 
 export default app;
